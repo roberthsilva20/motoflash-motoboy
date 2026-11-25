@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Área do Motoboy - Motoflash</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    body { background: #f4f4f4; color: #222; padding: 20px; }
+    header { background: #eab308; color: #111; padding: 18px 20px; border-radius: 10px; margin-bottom: 20px; }
+    h1 { font-size: 22px; }
+    .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    button { background: #eab308; color: #111; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 5px; font-weight: bold; width: 100%; }
+    button.aceito { background: #16a34a; color: white; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; }
+    .status { padding: 6px 12px; border-radius: 20px; font-size: 14px; font-weight: bold; display: inline-block; margin: 5px 0; }
+    .status.disponivel { background: #fef3c7; color: #92400e; }
+    .status.seu { background: #dcfce7; color: #166534; }
+    .status.concluido { background: #dbeafe; color: #1e40af; }
+    .pedido { border-left: 4px solid #eab308; padding: 15px; margin: 10px 0; background: #fffbeb; border-radius: 0 8px 8px 0; }
+    .pedido.seu { border-left-color: #16a34a; background: #f0fdf4; }
+    .valor { font-size: 20px; font-weight: bold; color: #16a34a; margin: 8px 0; }
+    .ganho { font-size: 14px; color: #166534; }
+    .nenhum { text-align: center; padding: 30px; color: #888; }
+    .perfil { background: #fef9c3; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+    .abas { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+    .aba { padding: 8px 16px; background: #ddd; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .aba.ativa { background: #eab308; color: #111; font-weight: bold; }
+    .conteudo-aba { display: none; }
+    .conteudo-aba.mostra { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🏍️ Área do Motoboy</h1>
+  <p style="opacity:0.8; font-size:14px;">Pedidos disponíveis na sua região</p>
+</header>
+
+<!-- PERFIL -->
+<div class="perfil">
+  <h3>👤 Seu Perfil</h3>
+  <input type="text" id="nomeMotoboy" placeholder="Digite seu nome para começar">
+  <p style="font-size:13px; color:#666; margin-top:5px;">Seu repasse por entrega: <strong>R$ 9,00</strong> de R$ 10,00 total</p>
+</div>
+
+<!-- ABAS -->
+<div class="abas">
+  <div class="aba ativa" onclick="trocarAba('disponiveis')">📋 Disponíveis</div>
+  <div class="aba" onclick="trocarAba('meus')">🏍️ Minhas Entregas</div>
+  <div class="aba" onclick="trocarAba('historico')">📊 Histórico</div>
+</div>
+
+<!-- PEDIDOS DISPONÍVEIS -->
+<div id="disponiveis" class="conteudo-aba mostra">
+  <div class="card">
+    <h3>📦 Pedidos Disponíveis</h3>
+    <div id="listaDisponiveis">
+      <div class="nenhum">⏳ Nenhum pedido disponível no momento.<br>Aguarde o restaurante fazer um pedido e o administrador confirmar o pagamento.</div>
+    </div>
+  </div>
+</div>
+
+<!-- MINHAS ENTREGAS -->
+<div id="meus" class="conteudo-aba">
+  <div class="card">
+    <h3>🏍️ Suas Entregas</h3>
+    <div id="listaMeus">
+      <div class="nenhum">Você ainda não aceitou nenhuma entrega.</div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTÓRICO -->
+<div id="historico" class="conteudo-aba">
+  <div class="card">
+    <h3>📊 Histórico e Ganhos</h3>
+    <p style="font-size:24px; font-weight:bold; color:#16a34a; margin:10px 0;">Total: R$ <span id="totalGanho">0,00</span></p>
+    <div id="listaHistorico">
+      <div class="nenhum">Nenhuma entrega concluída ainda.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+let meuNome = localStorage.getItem('nomeMotoboy') || '';
+let minhasEntregas = JSON.parse(localStorage.getItem('minhasEntregas')) || [];
+
+document.getElementById('nomeMotoboy').value = meuNome;
+document.getElementById('nomeMotoboy').addEventListener('change', () => {
+  meuNome = document.getElementById('nomeMotoboy').value;
+  localStorage.setItem('nomeMotoboy', meuNome);
+  listarTudo();
+});
+
+function trocarAba(nome) {
+  document.querySelectorAll('.conteudo-aba').forEach(a => a.classList.remove('mostra'));
+  document.querySelectorAll('.aba').forEach(a => a.classList.remove('ativa'));
+  document.getElementById(nome).classList.add('mostra');
+  event.target.classList.add('ativa');
+}
+
+function aceitarPedido(id) {
+  if(!meuNome) {
+    alert('⚠️ Digite seu nome no campo "Seu Perfil" acima primeiro!');
+    return;
+  }
+  if(!confirm('Tem certeza que deseja aceitar essa entrega?')) return;
+  
+  const pedido = pedidos.find(p => p.id === id);
+  pedido.status = 'aceito';
+  pedido.motoboy = { nome: meuNome };
+  
+  minhasEntregas.unshift({
+    ...pedido,
+    dataAceito: new Date().toLocaleString('pt-BR')
+  });
+  
+  localStorage.setItem('pedidos', JSON.stringify(pedidos));
+  localStorage.setItem('minhasEntregas', JSON.stringify(minhasEntregas));
+  listarTudo();
+  alert('✅ Pedido aceito! Boa entrega! 🏍️💨');
+}
+
+function concluirEntrega(id) {
+  if(!confirm('Marcar essa entrega como concluída?')) return;
+  
+  const pedido = pedidos.find(p => p.id === id);
+  if(pedido) pedido.status = 'concluido';
+  
+  const minhaEntrega = minhasEntregas.find(e => e.id === id);
+  if(minhaEntrega) {
+    minhaEntrega.status = 'concluido';
+    minhaEntrega.dataConcluido = new Date().toLocaleString('pt-BR');
+  }
+  
+  localStorage.setItem('pedidos', JSON.stringify(pedidos));
+  localStorage.setItem('minhasEntregas', JSON.stringify(minhasEntregas));
+  listarTudo();
+  alert('🎉 Parabéns! Entrega concluída! R$ 9,00 para você! 💰');
+}
+
+function listarDisponiveis() {
+  const container = document.getElementById('listaDisponiveis');
+  const disponiveis = pedidos.filter(p => p.status === 'disponivel');
+  
+  if(disponiveis.length === 0) {
+    container.innerHTML = '<div class="nenhum">⏳ Nenhum pedido disponível no momento.<br>Aguarde o restaurante fazer um pedido e o administrador confirmar o pagamento.</div>';
+    return;
+  }
+  
+  container.innerHTML = disponiveis.map(p => `
+    <div class="pedido">
+      <span class="status disponivel">DISPONÍVEL</span>
+      <p><strong>🏪 De:</strong> ${p.restaurante || 'Restaurante'}</p>
+      <p><strong>📍 Coleta:</strong> ${p.enderecoColeta || 'Não informado'}</p>
+      <p><strong>📍 Entrega:</strong> ${p.enderecoEntrega}</p>
+      <p><strong>👤 Recebe:</strong> ${p.nomeDestinatario}</p>
+      ${p.telefoneDestinatario ? `<p><strong>📞 Tel:</strong> ${p.telefoneDestinatario}</p>` : ''}
+      ${p.observacoes ? `<p><strong>📝 Obs:</strong> ${p.observacoes}</p>` : ''}
+      <div class="valor">R$ 10,00</div>
+      <p class="ganho">👉 Você recebe R$ 9,00</p>
+      <button onclick="aceitarPedido(${p.id})">✅ Aceitar Entrega</button>
+    </div>
+  `).join('');
+}
+
+function listarMeus() {
+  const container = document.getElementById('listaMeus');
+  const ativas = minhasEntregas.filter(e => e.status !== 'concluido');
+  
+  if(ativas.length === 0) {
+    container.innerHTML = '<div class="nenhum">Você não tem nenhuma entrega em andamento.</div>';
+    return;
+  }
+  
+  container.innerHTML = ativas.map(p => `
+    <div class="pedido seu">
+      <span class="status seu">SUA ENTREGA</span>
+      <p><strong>📍 Entrega:</strong> ${p.enderecoEntrega}</p>
+      <p><strong>👤 Recebe:</strong> ${p.nomeDestinatario}</p>
+      <div class="valor">R$ 9,00 para você</div>
+      <button class="aceito" onclick="concluirEntrega(${p.id})">✅ Marcar como Concluída</button>
+    </div>
+  `).join('');
+}
+
+function listarHistorico() {
+  const container = document.getElementById('listaHistorico');
+  const concluidas = minhasEntregas.filter(e => e.status === 'concluido');
+  const total = concluidas.reduce((s, e) => s + 9.00, 0);
+  
+  document.getElementById('totalGanho').textContent = total.toFixed(2).replace('.', ',');
+  
+  if(concluidas.length === 0) {
+    container.innerHTML = '<div class="nenhum">Nenhuma entrega concluída ainda.</div>';
+    return;
+  }
+  
+  container.innerHTML = concluidas.map(p => `
+    <div style="padding:8px 0; border-bottom:1px solid #eee;">
+      <strong>${p.dataConcluido || p.dataAceito}</strong><br>
+      Para: ${p.enderecoEntrega} — <span style="color:#16a34a; font-weight:bold;">+R$ 9,00</span>
+    </div>
+  `).join('');
+}
+
+function listarTudo() {
+  listarDisponiveis();
+  listarMeus();
+  listarHistorico();
+}
+
+// Atualiza a cada 3 segundos
+setInterval(() => {
+  pedidos = JSON.parse(localStorage.getItem('pedidos')) || [];
+  minhasEntregas = JSON.parse(localStorage.getItem('minhasEntregas')) || [];
+  listarTudo();
+}, 3000);
+
+listarTudo();
+</script>
+
+</body>
+</html>
